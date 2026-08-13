@@ -70,7 +70,7 @@ jobs:
 
       - name: Upload SARIF
         if: steps.changes.outputs.deps == 'true' && always()
-        uses: github/codeql-action/upload-sarif@4187e74d05793876e9989daffde9c3e66b4acd07 # v3.37.3
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
         with:
           sarif_file: trivy.sarif
           category: trivy
@@ -114,7 +114,7 @@ jobs:
         run: /tmp/semgrep-venv/bin/semgrep --config=auto --sarif --output=semgrep.sarif . || true
 
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@4187e74d05793876e9989daffde9c3e66b4acd07 # v3.37.3
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
         with:
           sarif_file: semgrep.sarif
           category: semgrep
@@ -162,7 +162,7 @@ jobs:
 
       - name: Upload SARIF
         if: steps.changes.outputs.infra == 'true' && (success() || failure())
-        uses: github/codeql-action/upload-sarif@4187e74d05793876e9989daffde9c3e66b4acd07 # v3.37.3
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
         with:
           sarif_file: checkov.sarif
           category: checkov
