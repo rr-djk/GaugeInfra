@@ -16,6 +16,7 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 resource "aws_s3_bucket" "state" {
+  #checkov:skip=CKV2_AWS_62:Le bucket d'état ne stocke que les .tfstate ecrits par Terraform; aucune notification d'evenement n'est necessaire
   bucket        = "gaugeinfra-tfstate-${data.aws_caller_identity.current.account_id}"
   force_destroy = false
   tags          = var.tags
