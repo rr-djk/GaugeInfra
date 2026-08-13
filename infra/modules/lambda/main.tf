@@ -27,14 +27,15 @@ resource "aws_iam_role_policy_attachment" "basic_execution" {
 }
 
 resource "aws_lambda_function" "this" {
-  function_name = var.function_name
-  role          = aws_iam_role.this.arn
-  runtime       = var.runtime
-  handler       = var.handler
-  filename      = data.archive_file.this.output_path
-  memory_size   = var.memory_size
-  timeout       = var.timeout
-  tags          = var.tags
+  function_name                  = var.function_name
+  role                           = aws_iam_role.this.arn
+  runtime                        = var.runtime
+  handler                        = var.handler
+  filename                       = data.archive_file.this.output_path
+  memory_size                    = var.memory_size
+  timeout                        = var.timeout
+  tags                           = var.tags
+  reserved_concurrent_executions = var.reserved_concurrent_executions
 
   environment {
     variables = var.environment_variables

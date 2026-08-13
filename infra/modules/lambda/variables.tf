@@ -43,3 +43,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "reserved_concurrent_executions" {
+  description = "Limite de concurrence de la fonction"
+  type        = number
+  default     = 10
+}
