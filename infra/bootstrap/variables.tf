@@ -8,7 +8,7 @@ variable "tags" {
   description = "Tags appliqués au bucket d'état"
   type        = map(string)
   default = {
-    Project   = "GaugeInfra"
+    Project   = "gaugeinfra"
     ManagedBy = "Terraform"
   }
 }
