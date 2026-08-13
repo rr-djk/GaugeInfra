@@ -1,0 +1,3 @@
+region = "****"
+frontend_bucket_name = "gaugeinfra-frontend-****"
+frontend_force_destroy = true
