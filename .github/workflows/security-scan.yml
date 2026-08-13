@@ -13,6 +13,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      security-events: write
     steps:
       # audit-only: logs egress but does not block it (same for every
       # harden-runner step in this file).
@@ -36,7 +37,10 @@ jobs:
               - 'pyproject.toml'
               - 'uv.lock'
 
-      - name: Run Trivy
+      # Gate: fails the job on HIGH/CRITICAL findings only. The SARIF
+      # run below still reports every severity (LOW to CRITICAL), so
+      # lower-severity findings are never silently ignored.
+      - name: Run Trivy (gate on HIGH/CRITICAL)
         if: steps.changes.outputs.deps == 'true'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -47,6 +51,29 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: 1
+
+      # Audit-only: generates a SARIF with all findings (LOW to
+      # CRITICAL) so the full audit is available even when the gate
+      # above fails on HIGH/CRITICAL.
+      - name: Run Trivy (SARIF, all severities)
+        if: steps.changes.outputs.deps == 'true' && always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: uv.lock
+          scanners: vuln
+          format: sarif
+          output: trivy.sarif
+          severity: LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 0
+
+      - name: Upload SARIF
+        if: steps.changes.outputs.deps == 'true' && always()
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+        with:
+          sarif_file: trivy.sarif
+          category: trivy
 
   sast:
     name: Semgrep scan
@@ -80,11 +107,63 @@ jobs:
             /tmp/semgrep-venv/bin/pip install semgrep==1.172.0
           fi
 
+      # Audit-only: the job never blocks the PR, all findings are
+      # reported in the SARIF.
+      # TODO: improve to fail on HIGH/CRITICAL once the current findings are fixed.
       - name: Run Semgrep
         run: /tmp/semgrep-venv/bin/semgrep --config=auto --sarif --output=semgrep.sarif . || true
 
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@4187e74d05793876e9989daffde9c3e66b4acd07 # v3.37.3
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
         with:
           sarif_file: semgrep.sarif
           category: semgrep
+
+  iac:
+    name: Checkov scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Detect infra changes
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: changes
+        with:
+          filters: |
+            infra:
+              - 'infra/**'
+
+      # soft_fail: the job never blocks the PR, all findings
+      # (LOW to CRITICAL) are reported in the SARIF.
+      # TODO: switch to soft_fail: false, once the current findings are fixed,
+      # to fail on HIGH/CRITICAL.
+      - name: Run Checkov
+        if: steps.changes.outputs.infra == 'true'
+        uses: bridgecrewio/checkov-action@358405ddafaa109ad35d3d607bbc7cf933c742d9 # v12.3116.0
+        with:
+          directory: infra
+          framework: terraform
+          config_file: .checkov.yml
+          quiet: true
+          soft_fail: true
+          output_format: cli,sarif
+          output_file_path: console,checkov.sarif
+
+      - name: Upload SARIF
+        if: steps.changes.outputs.infra == 'true' && (success() || failure())
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+        with:
+          sarif_file: checkov.sarif
+          category: checkov

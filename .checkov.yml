@@ -1,0 +1,118 @@
+# Exclusions Checkov — findings acceptés et justifiés.
+# Format: <rule_id>:<chemin/fichier> pour scoper l'exclusion au fichier.
+skip-check:
+  # ============================================================
+  # Bucket d'état (bootstrap)
+  # ============================================================
+
+  # Bucket d'état Terraform (bootstrap) : ne stocke que les .tfstate
+  # ecrits par Terraform; aucune notification d'evenement n'est necessaire.
+  - CKV2_AWS_62:bootstrap/main.tf
+
+  # Replication cross-region non necessaire pour ce projet.
+  - CKV_AWS_144:bootstrap/main.tf
+
+  # Petit projet solo en dev; croissance de l'etat negligeable.
+  - CKV2_AWS_61:bootstrap/main.tf
+
+  # Access logging non necessaire en solo: CloudTrail trace deja les appels
+  # S3 au niveau du compte; un bucket de logs ajouterait de la complexite
+  # (destination, permissions) pour une valeur d'audit negligeable.
+  - CKV_AWS_18:bootstrap/main.tf
+
+  # ============================================================
+  # Bucket frontend (modules/frontend)
+  # ============================================================
+
+  # Bucket frontend : site statique servi par CloudFront/OAC. Rien ne doit
+  # etre declenche quand un fichier est uploade; notifications inutiles.
+  - CKV2_AWS_62:modules/frontend/main.tf
+
+  # Bucket frontend : replication inutile car CloudFront cache deja le
+  # contenu sur les edges mondiaux, et ceci est un petit projet personnel qui ne
+  # necessite pas de multi-region.
+  - CKV_AWS_144:modules/frontend/main.tf
+
+  # Bucket frontend : petit projet personnel, croissance negligeable (site
+  # statique re-deployable depuis le repo).
+  - CKV2_AWS_61:modules/frontend/main.tf
+
+  # Bucket frontend : acces via CloudFront (pas directement S3); si besoin
+  # d'audit des visites, ce serait le logging CloudFront, pas celui du
+  # bucket. CloudTrail trace deja les appels S3 au niveau du compte.
+  - CKV_AWS_18:modules/frontend/main.tf
+
+  # Bucket frontend : contenu public (servi par CloudFront), donc pas de
+  # secret a proteger; le chiffrement par defaut SSE-S3 suffit et evite la
+  # gestion KMS.
+  - CKV_AWS_145:modules/frontend/main.tf
+
+  # ============================================================
+  # CloudFront (modules/frontend)
+  # ============================================================
+
+  # CloudFront : site public accessible partout, aucune raison de bloquer
+  # des pays; la geo restriction est un controle optionnel sans usage ici.
+  - CKV_AWS_374:modules/frontend/main.tf
+
+  # CloudFront : petit projet personnel, pas de besoin d'audit des visites;
+  # activer le logging demanderait un bucket destination et de la gestion
+  # supplementaire pour une valeur minime.
+  - CKV_AWS_86:modules/frontend/main.tf
+
+  # CloudFront : ne sert que des fichiers statiques (GET/HEAD). Le paste de
+  # code Terraform est envoye par le navigateur directement a l'API Gateway
+  # (fetch), il ne transite pas par cette distribution.
+  - CKV_AWS_68:modules/frontend/main.tf
+
+  # CloudFront : origin failover inutile pour un petit projet personnel.
+  - CKV_AWS_310:modules/frontend/main.tf
+
+  # CloudFront : certificat par defaut CloudFront = politique TLSv1.2_2021
+  # appliquee automatiquement (TLS >= 1.2).
+  - CKV_AWS_174:modules/frontend/main.tf
+
+  # CloudFront : certificat par defaut car le site utilise le domaine
+  # *.cloudfront.net (pas de domaine personnalise).
+  - CKV2_AWS_42:modules/frontend/main.tf
+
+  # CloudFront : aucun WAF attache a cette distribution (voir skip
+  # CKV_AWS_68)
+  - CKV2_AWS_47:modules/frontend/main.tf
+
+  # ============================================================
+  # Lambda (modules/lambda)
+  # ============================================================
+
+  # Lambda : variables d'environnement deja chiffrees au repos par AWS,
+  # une CMK serait un cout (~$1/mois) pour rien.
+  - CKV_AWS_173:modules/lambda/main.tf
+
+  # Lambda : invoquee de facon synchrone par l'API Gateway.
+  - CKV_AWS_116:modules/lambda/main.tf
+
+  # Lambda : code zippe a l'apply depuis backend/src (source du repo), pas
+  # d'artefact externe a proteger. Le code-signing (AWS Signer) serait une
+  # complexite de pipeline sans benefice pour un projet solo.
+  - CKV_AWS_272:modules/lambda/main.tf
+
+  # Lambda : n'appelle que des services AWS (Price List, Bedrock), pas
+  # d'exposition internet directe. Et n'est accessible que via l'API Gateway.
+  - CKV_AWS_117:modules/lambda/main.tf
+
+  # Lambda : orchestrateur unique, CloudWatch Logs suffit pour le debogage.
+  - CKV_AWS_50:modules/lambda/main.tf
+
+  # ============================================================
+  # API Gateway (modules/api)
+  # ============================================================
+
+  # CloudFront : preload HSTS inapplicable sur le domaine par defaut.
+  - CKV_AWS_259:modules/frontend/main.tf
+
+  # API Gateway : retention 14 jours.
+  - CKV_AWS_338:modules/api/main.tf
+
+  # API Gateway : logs d'acces sans donnees sensibles; CloudWatch chiffre
+  # par defaut (cle AWS managee), une CMK couterait ~$1/mois sans benefice.
+  - CKV_AWS_158:modules/api/main.tf
