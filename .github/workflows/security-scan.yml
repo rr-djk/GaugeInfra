@@ -155,6 +155,7 @@ jobs:
         with:
           directory: infra
           framework: terraform
+          config_file: .checkov.yml
           quiet: true
           soft_fail: true
           output_format: cli,sarif
