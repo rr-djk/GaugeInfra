@@ -1,0 +1,53 @@
+name: Backend Tests
+
+on:
+  push:
+
+permissions: {}
+
+jobs:
+  test:
+    name: Tests backend + couverture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      # audit-only: logs egress but does not block it (same for every
+      # harden-runner step in this repo).
+      # TODO: switch to egress-policy: block with allowed-endpoints list later.
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Detect backend changes
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: changes
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+
+      - name: Install uv + Python 3.12
+        if: steps.changes.outputs.backend == 'true'
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        if: steps.changes.outputs.backend == 'true'
+        run: uv sync --locked
+
+      - name: Run tests + coverage gate (>= 75 %)
+        if: steps.changes.outputs.backend == 'true'
+        run: uv run pytest --cov=backend.src.parser --cov-fail-under=75 --cov-report=term-missing

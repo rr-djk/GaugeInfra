@@ -1,3 +1,12 @@
+[project]
+name = "gaugeinfra-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["python-hcl2>=8.1.2"]
+
+[dependency-groups]
+dev = ["pytest>=9", "pytest-cov>=7", "mutmut>=3.7"]
+
 [tool.ruff]
 target-version = "py312"
 line-length = 88
@@ -7,3 +16,15 @@ select = ["E", "F", "C90", "I", "UP", "B", "SIM"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["backend/tests"]
+markers = ["dogfood: tests sur le vrai infra/"]
+addopts = "-ra"
+
+[tool.mutmut]
+source_paths = ["backend/src/parser"]
+pytest_add_cli_args = ["-c", "pyproject.toml"]
+pytest_add_cli_args_test_selection = ["backend/tests", "-m", "not dogfood"]
+also_copy = ["backend/tests"]
