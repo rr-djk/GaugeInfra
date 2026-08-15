@@ -18,11 +18,13 @@ select = ["E", "F", "C90", "I", "UP", "B", "SIM"]
 max-complexity = 10
 
 [tool.pytest.ini_options]
-pythonpath = ["backend/src"]
+pythonpath = ["."]
 testpaths = ["backend/tests"]
 markers = ["dogfood: tests sur le vrai infra/"]
 addopts = "-ra"
 
 [tool.mutmut]
-paths_to_mutate = ["backend/src/parser"]
-tests_dir = "backend/tests"
+source_paths = ["backend/src/parser"]
+pytest_add_cli_args = ["-c", "pyproject.toml"]
+pytest_add_cli_args_test_selection = ["backend/tests", "-m", "not dogfood"]
+also_copy = ["backend/tests"]

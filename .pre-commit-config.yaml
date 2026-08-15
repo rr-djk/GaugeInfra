@@ -22,10 +22,13 @@ repos:
     rev: bf9dd9c695ddaf238af36f179049202358ec22b7 # v1.108.1
     hooks:
       - id: terraform_fmt
+        files: ^infra/
       - id: terraform_validate
+        files: ^infra/
         args:
           - --init-args=-backend=false
       - id: terraform_tflint
+        files: ^infra/
         args:
           - --args=--config=__GIT_WORKING_DIR__/.tflint.hcl
 

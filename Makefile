@@ -40,7 +40,7 @@ help:
 
 # ---------- Tests backend ----------
 test:            ## Tests complets + couverture >= 75 %
-	uv run pytest --cov=parser --cov-fail-under=75 --cov-report=term-missing
+	uv run pytest --cov=backend.src.parser --cov-fail-under=75 --cov-report=term-missing
 
 test-unit:       ## Tests sans dogfooding
 	uv run pytest -m "not dogfood"
