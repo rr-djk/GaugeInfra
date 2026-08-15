@@ -170,17 +170,25 @@ class TerraformExtractor:
     def extract(self, blocks: list, ctx: ExtractionContext) -> None:
         normalized = normalize_block(blocks)
         for tname, tbody in normalized.items():
-            # normalize_block() transforme `backend "s3" { ... }` en {"s3": {...}}.
-            # On extrait le label (type de backend) et son contenu en une seule passe.
+            # hcl2 représente les blocs imbriqués (backend, required_providers)
+            # comme des LISTES de dicts : {'backend': [{'s3': {...}}]}.
+            # normalize_block() n'aplatit pas ces listes (SRP : nettoyage pur,
+            # pas d'interprétation de structure Terraform).
             if tname == "backend":
-                if isinstance(tbody, dict):
-                    for btype, bbody in tbody.items():
-                        if isinstance(bbody, dict):
-                            ctx.backend = dict(bbody)
-                            ctx.backend["type"] = btype
+                # Terraform valide garantit un seul bloc backend par module :
+                # la boucle ne tourne qu'une fois ; elle reste défensive.
+                entries = tbody if isinstance(tbody, list) else [tbody]
+                for item in entries:
+                    if isinstance(item, dict):
+                        for btype, bbody in item.items():
+                            if isinstance(bbody, dict):
+                                ctx.backend = dict(bbody)
+                                ctx.backend["type"] = btype
             elif tname == "required_providers":
-                if isinstance(tbody, dict):
-                    ctx.providers.append({"required_providers": dict(tbody)})
+                entries = tbody if isinstance(tbody, list) else [tbody]
+                for item in entries:
+                    if isinstance(item, dict):
+                        ctx.providers.append({"required_providers": dict(item)})
             else:
                 ctx.other_blocks.setdefault("terraform", 0)
                 ctx.other_blocks["terraform"] += 1
@@ -221,6 +229,10 @@ def extract_all(
     ctx = ExtractionContext(module_path=module_path, source_file=source_file)
 
     for block_type, block_list in body.items():
+        if block_type.startswith("__"):
+            # Marqueurs internes hcl2 (__comments__, __is_block__) : filtrés
+            # en racine comme clean_value le fait déjà à l'intérieur des dicts.
+            continue
         if not isinstance(block_list, list):
             continue
         extractor = REGISTRY.get(block_type)
